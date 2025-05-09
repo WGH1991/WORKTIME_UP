@@ -1,0 +1,1012 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Work Hours Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+  />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    /* Custom scrollbar for notes modal */
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background-color: #e9be0a;
+      border-radius: 3px;
+    }
+    /* Remove background color from AM/PM buttons */
+    .ampm-button {
+      background-color: transparent !important;
+      border: none !important;
+      padding: 0.25rem 0.5rem !important;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: normal;
+      color: black;
+      user-select: none;
+    }
+    .ampm-button:focus {
+      outline: 2px solid #e9be0a;
+      outline-offset: 2px;
+    }
+    .ampm-button.selected {
+      font-weight: 700;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body class="bg-[#d3def4] font-sans min-h-screen flex flex-col text-[10px]">
+
+  <!-- Navigation -->
+  <nav class="bg-[#e9be0a] flex justify-around items-center py-3 text-black select-none">
+    <button id="navCalculate" class="flex flex-col items-center gap-1 relative pb-2 font-normal border-b-4 border-black">
+      <i class="fas fa-calculator text-lg"></i>
+      <span>Calculate</span>
+    </button>
+    <button id="navRecords" class="flex flex-col items-center gap-1 opacity-50">
+      <i class="fas fa-bars text-lg"></i>
+      <span>Records</span>
+    </button>
+    <button id="navReports" class="flex flex-col items-center gap-1 opacity-50">
+      <i class="fas fa-chart-bar text-lg"></i>
+      <span>Reports</span>
+    </button>
+    <button id="navSettings" class="flex flex-col items-center gap-1 opacity-50">
+      <i class="fas fa-cog text-lg"></i>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- Main container -->
+  <main class="flex-grow p-4 max-w-md mx-auto w-full">
+
+    <!-- Calculate Page -->
+    <section id="pageCalculate" class="space-y-4">
+
+      <div class="flex justify-between gap-4">
+        <div class="bg-[#f7f4fb] rounded-xl shadow-md p-4 w-1/2 min-w-[140px]">
+          <p class="font-normal mb-2 leading-tight">
+            Time: <span class="font-mono" id="displayTime">00:00</span>
+          </p>
+          <p class="font-normal leading-tight">Minutes: <span class="font-mono" id="displayMinutes">0</span></p>
+        </div>
+        <div class="bg-[#f7f4fb] rounded-xl shadow-md p-4 w-1/2 min-w-[140px] flex flex-col justify-center">
+          <p class="font-normal mb-1">Total amount</p>
+          <p class="font-extrabold text-green-700" id="displayAmount">0.00</p>
+        </div>
+      </div>
+
+      <div class="bg-[#e9be0a] rounded-md flex items-center justify-between px-6 py-4 text-black select-none">
+        <div class="flex items-center gap-3 min-w-0">
+          <i class="far fa-calendar-alt text-xl flex-shrink-0"></i>
+          <div class="flex flex-col -mt-1 truncate">
+            <label for="inputDate" class="font-normal select-text">Date</label>
+            <input
+              id="inputDate"
+              type="date"
+              class="font-mono font-normal bg-[#e9be0a] border-none outline-none max-w-[130px]"
+              value=""
+              aria-label="Select date"
+            />
+          </div>
+        </div>
+        <label for="nextDay" class="flex items-center gap-2 cursor-pointer font-normal select-none">
+          <input id="nextDay" type="checkbox" class="w-5 h-5 cursor-pointer" />
+          Next day
+        </label>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <label for="inputProject" class="font-normal select-none">Project</label>
+        <select
+          id="inputProject"
+          class="bg-[#f7f4fb] border border-black rounded-md px-4 py-2 font-extrabold font-mono w-max cursor-pointer"
+          aria-label="Select project"
+        >
+        </select>
+      </div>
+
+      <div class="flex justify-center gap-8 mt-2">
+        <button
+          id="btnNotes"
+          aria-label="Add notes"
+          class="bg-[#e9be0a] rounded-full p-3 shadow-md flex items-center justify-center text-black select-none hover:bg-yellow-400 transition"
+          title="Add notes"
+          type="button"
+        >
+          <i class="fas fa-comment-alt text-lg"></i>
+        </button>
+        <button
+          id="btnReset"
+          aria-label="Reset inputs"
+          class="bg-[#e9be0a] rounded-full p-3 shadow-md flex items-center justify-center text-black select-none hover:bg-yellow-400 transition"
+          title="Reset inputs"
+          type="button"
+        >
+          <i class="fas fa-sync-alt text-lg"></i>
+        </button>
+      </div>
+
+      <div class="flex justify-between gap-4 mt-2">
+        <div
+          class="bg-[#f7f4fb] rounded-xl shadow-md p-4 w-1/2 flex flex-col min-w-[140px]"
+          aria-label="Start time input"
+        >
+          <label class="font-extrabold mb-2 select-none">Start</label>
+          <div class="flex items-center gap-2 font-mono font-normal select-none">
+            <input
+              id="startHH"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="2"
+              placeholder="HH"
+              class="w-12 bg-transparent border-b border-black text-center font-mono font-normal outline-none"
+              aria-label="Start hour"
+            />
+            <span>:</span>
+            <input
+              id="startMM"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="2"
+              placeholder="MM"
+              class="w-12 bg-transparent border-b border-black text-center font-mono font-normal outline-none"
+              aria-label="Start minutes"
+            />
+            <div class="flex flex-col select-none">
+              <button
+                type="button"
+                id="startAM"
+                class="ampm-button selected"
+                aria-pressed="true"
+                aria-label="Start AM"
+              >
+                AM
+              </button>
+              <button
+                type="button"
+                id="startPM"
+                class="ampm-button"
+                aria-pressed="false"
+                aria-label="Start PM"
+              >
+                PM
+              </button>
+            </div>
+          </div>
+        </div>
+        <div
+          class="bg-[#f7f4fb] rounded-xl shadow-md p-4 w-1/2 flex flex-col min-w-[140px]"
+          aria-label="End time input"
+        >
+          <label class="font-extrabold mb-2 select-none">End</label>
+          <div class="flex items-center gap-2 font-mono font-normal select-none">
+            <input
+              id="endHH"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="2"
+              placeholder="HH"
+              class="w-12 bg-transparent border-b border-black text-center font-mono font-normal outline-none"
+              aria-label="End hour"
+            />
+            <span>:</span>
+            <input
+              id="endMM"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="2"
+              placeholder="MM"
+              class="w-12 bg-transparent border-b border-black text-center font-mono font-normal outline-none"
+              aria-label="End minutes"
+            />
+            <div class="flex flex-col select-none">
+              <button
+                type="button"
+                id="endAM"
+                class="ampm-button selected"
+                aria-pressed="true"
+                aria-label="End AM"
+              >
+                AM
+              </button>
+              <button
+                type="button"
+                id="endPM"
+                class="ampm-button"
+                aria-pressed="false"
+                aria-label="End PM"
+              >
+                PM
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-[#f7f4fb] rounded-xl shadow-md p-4 flex justify-between font-normal select-none">
+        <div class="flex flex-col min-w-[100px]">
+          <label for="breakTime" class="mb-1 cursor-text select-text">Break time</label>
+          <input
+            id="breakTime"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="3"
+            value="30"
+            class="font-mono bg-transparent border-b border-black w-16 outline-none text-center"
+            aria-label="Break time in minutes"
+          />
+        </div>
+        <div class="flex flex-col min-w-[100px]">
+          <label for="hourlyRate" class="mb-1 cursor-text select-text">Hourly rate</label>
+          <input
+            id="hourlyRate"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            value="76"
+            class="font-mono bg-transparent border-b border-black w-16 outline-none text-center"
+            aria-label="Hourly rate"
+          />
+        </div>
+      </div>
+
+      <div class="flex justify-center mt-6">
+        <button
+          id="btnCalculate"
+          class="bg-[#e9be0a] text-white font-extrabold px-10 py-3 rounded-xl shadow-lg flex items-center gap-3 select-none hover:bg-yellow-400 transition"
+          type="button"
+          aria-label="Calculate and save work hours"
+        >
+          <i class="fas fa-calculator"></i> Calculate
+        </button>
+      </div>
+    </section>
+
+    <!-- Records Page -->
+    <section id="pageRecords" class="hidden">
+      <h2 class="font-bold mb-4 text-center">Work Hours History</h2>
+      <div class="mb-4 flex justify-center gap-4 flex-wrap">
+        <button
+          id="filterMonth"
+          class="bg-[#e9be0a] px-4 py-2 rounded-md font-semibold hover:bg-yellow-400 transition"
+          aria-pressed="true"
+          type="button"
+        >
+          By Month
+        </button>
+        <button
+          id="filterWeek"
+          class="bg-[#f7f4fb] px-4 py-2 rounded-md font-semibold hover:bg-yellow-400 transition"
+          aria-pressed="false"
+          type="button"
+        >
+          By Week
+        </button>
+      </div>
+      <div id="recordsList" class="space-y-3 max-h-[60vh] overflow-y-auto px-2 text-[10px]"></div>
+      <div class="mt-6 flex justify-center">
+        <button
+          id="btnBackFromRecords"
+          class="bg-[#e9be0a] text-white font-extrabold px-8 py-2 rounded-xl shadow-lg select-none hover:bg-yellow-400 transition"
+          type="button"
+        >
+          Back
+        </button>
+      </div>
+    </section>
+
+    <!-- Reports Page -->
+    <section id="pageReports" class="hidden space-y-6">
+      <h2 class="font-bold mb-4 text-center">Download Report</h2>
+      <div class="bg-[#e9be0a] rounded-md flex items-center justify-between px-6 py-4 text-black select-none">
+        <div class="flex items-center gap-3 min-w-0">
+          <i class="far fa-calendar-alt text-xl flex-shrink-0"></i>
+          <div class="flex flex-col -mt-1 truncate">
+            <label for="reportStartDate" class="font-normal select-text">Start Date</label>
+            <input
+              id="reportStartDate"
+              type="date"
+              class="font-mono font-normal bg-[#e9be0a] border-none outline-none max-w-[130px]"
+              value=""
+              aria-label="Select report start date"
+            />
+          </div>
+        </div>
+        <div class="flex items-center gap-3 min-w-0">
+          <i class="far fa-calendar-alt text-xl flex-shrink-0"></i>
+          <div class="flex flex-col -mt-1 truncate">
+            <label for="reportEndDate" class="font-normal select-text">End Date</label>
+            <input
+              id="reportEndDate"
+              type="date"
+              class="font-mono font-normal bg-[#e9be0a] border-none outline-none max-w-[130px]"
+              value=""
+              aria-label="Select report end date"
+            />
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-center">
+        <button
+          id="btnDownloadReport"
+          class="bg-[#e9be0a] text-white font-extrabold px-10 py-3 rounded-xl shadow-lg flex items-center gap-3 select-none hover:bg-yellow-400 transition"
+          type="button"
+          aria-label="Download PDF report"
+        >
+          <i class="fas fa-file-pdf text-lg"></i> Download PDF
+        </button>
+      </div>
+      <div class="mt-6 flex justify-center">
+        <button
+          id="btnBackFromReports"
+          class="bg-[#e9be0a] text-white font-extrabold px-8 py-2 rounded-xl shadow-lg select-none hover:bg-yellow-400 transition"
+          type="button"
+        >
+          Back
+        </button>
+      </div>
+    </section>
+
+    <!-- Settings Page -->
+    <section id="pageSettings" class="hidden space-y-6">
+      <h2 class="font-bold mb-4 text-center">Settings</h2>
+      <form id="settingsForm" class="space-y-4 max-w-md mx-auto text-[10px]">
+        <div class="flex flex-col">
+          <label for="inputProjects" class="font-normal mb-1 select-none">Projects (comma separated)</label>
+          <textarea
+            id="inputProjects"
+            rows="3"
+            class="bg-[#f7f4fb] border border-black rounded-md px-4 py-2 font-normal outline-none focus:ring-2 focus:ring-[#e9be0a] resize-none"
+            placeholder="Enter projects separated by commas"
+            aria-label="Projects list"
+          ></textarea>
+        </div>
+        <div class="flex flex-col">
+          <label for="inputHourlyRates" class="font-normal mb-1 select-none">Hourly Rates (comma separated, match projects order)</label>
+          <textarea
+            id="inputHourlyRates"
+            rows="3"
+            class="bg-[#f7f4fb] border border-black rounded-md px-4 py-2 font-normal outline-none focus:ring-2 focus:ring-[#e9be0a] resize-none"
+            placeholder="Enter hourly rates separated by commas"
+            aria-label="Hourly rates list"
+          ></textarea>
+        </div>
+        <div class="flex justify-center">
+          <button
+            type="submit"
+            class="bg-[#e9be0a] text-white font-extrabold px-10 py-3 rounded-xl shadow-lg select-none hover:bg-yellow-400 transition"
+            aria-label="Save settings"
+          >
+            Save Settings
+          </button>
+        </div>
+      </form>
+      <div class="mt-6 flex justify-center">
+        <button
+          id="btnBackFromSettings"
+          class="bg-[#e9be0a] text-white font-extrabold px-8 py-2 rounded-xl shadow-lg select-none hover:bg-yellow-400 transition"
+          type="button"
+        >
+          Back
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Notes Modal -->
+  <div
+    id="notesModal"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="notesModalTitle"
+  >
+    <div class="bg-white rounded-xl max-w-lg w-full p-6 relative flex flex-col max-h-[80vh]">
+      <h3 id="notesModalTitle" class="font-bold mb-4">Add Notes</h3>
+      <textarea
+        id="notesInput"
+        rows="8"
+        class="border border-gray-300 rounded-md p-3 resize-none scrollbar-thin focus:outline-none focus:ring-2 focus:ring-[#e9be0a]"
+        placeholder="Enter your notes here..."
+        aria-label="Notes input"
+      ></textarea>
+      <div class="mt-4 flex justify-end gap-4">
+        <button
+          id="btnCloseNotes"
+          class="bg-gray-300 text-black font-semibold px-4 py-2 rounded-md hover:bg-gray-400 transition"
+          type="button"
+        >
+          Cancel
+        </button>
+        <button
+          id="btnSaveNotes"
+          class="bg-[#e9be0a] text-white font-semibold px-4 py-2 rounded-md hover:bg-yellow-400 transition"
+          type="button"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      // Elements
+      const navCalculate = document.getElementById("navCalculate");
+      const navRecords = document.getElementById("navRecords");
+      const navReports = document.getElementById("navReports");
+      const navSettings = document.getElementById("navSettings");
+
+      const pageCalculate = document.getElementById("pageCalculate");
+      const pageRecords = document.getElementById("pageRecords");
+      const pageReports = document.getElementById("pageReports");
+      const pageSettings = document.getElementById("pageSettings");
+
+      const displayTime = document.getElementById("displayTime");
+      const displayMinutes = document.getElementById("displayMinutes");
+      const displayAmount = document.getElementById("displayAmount");
+
+      const inputDate = document.getElementById("inputDate");
+      const nextDayCheckbox = document.getElementById("nextDay");
+      const inputProject = document.getElementById("inputProject");
+
+      const startHH = document.getElementById("startHH");
+      const startMM = document.getElementById("startMM");
+      const startAM = document.getElementById("startAM");
+      const startPM = document.getElementById("startPM");
+
+      const endHH = document.getElementById("endHH");
+      const endMM = document.getElementById("endMM");
+      const endAM = document.getElementById("endAM");
+      const endPM = document.getElementById("endPM");
+
+      const breakTimeInput = document.getElementById("breakTime");
+      const hourlyRateInput = document.getElementById("hourlyRate");
+
+      const btnCalculate = document.getElementById("btnCalculate");
+      const btnReset = document.getElementById("btnReset");
+      const btnNotes = document.getElementById("btnNotes");
+
+      const notesModal = document.getElementById("notesModal");
+      const notesInput = document.getElementById("notesInput");
+      const btnCloseNotes = document.getElementById("btnCloseNotes");
+      const btnSaveNotes = document.getElementById("btnSaveNotes");
+
+      const recordsList = document.getElementById("recordsList");
+      const filterMonth = document.getElementById("filterMonth");
+      const filterWeek = document.getElementById("filterWeek");
+      const btnBackFromRecords = document.getElementById("btnBackFromRecords");
+
+      const reportStartDate = document.getElementById("reportStartDate");
+      const reportEndDate = document.getElementById("reportEndDate");
+      const btnDownloadReport = document.getElementById("btnDownloadReport");
+      const btnBackFromReports = document.getElementById("btnBackFromReports");
+
+      const inputProjects = document.getElementById("inputProjects");
+      const inputHourlyRates = document.getElementById("inputHourlyRates");
+      const settingsForm = document.getElementById("settingsForm");
+      const btnBackFromSettings = document.getElementById("btnBackFromSettings");
+
+      // State
+      let notes = "";
+      let records = JSON.parse(localStorage.getItem("workRecords") || "[]");
+      let settings = JSON.parse(localStorage.getItem("workSettings") || "{}");
+
+      // Initialize date inputs with today
+      const todayISO = new Date().toISOString().slice(0, 10);
+      inputDate.value = todayISO;
+      reportStartDate.value = todayISO;
+      reportEndDate.value = todayISO;
+
+      // Load settings or initialize defaults
+      if (!settings.projects) settings.projects = ["C&R"];
+      if (!settings.hourlyRates) settings.hourlyRates = [76];
+      if (!settings.breakTime) settings.breakTime = 30;
+
+      // Populate projects dropdown
+      function populateProjects() {
+        inputProject.innerHTML = "";
+        settings.projects.forEach((proj, i) => {
+          const option = document.createElement("option");
+          option.value = proj;
+          option.textContent = proj;
+          inputProject.appendChild(option);
+        });
+        if (!settings.projects.includes(inputProject.value)) {
+          inputProject.value = settings.projects[0];
+        }
+      }
+      populateProjects();
+
+      // Set hourly rate input based on selected project
+      function updateHourlyRate() {
+        const proj = inputProject.value;
+        const idx = settings.projects.indexOf(proj);
+        if (idx !== -1 && settings.hourlyRates[idx] !== undefined) {
+          hourlyRateInput.value = settings.hourlyRates[idx];
+        } else {
+          hourlyRateInput.value = "";
+        }
+      }
+      updateHourlyRate();
+
+      // When project changes, update hourly rate
+      inputProject.addEventListener("change", updateHourlyRate);
+
+      // Navigation helper
+      function showPage(page) {
+        [pageCalculate, pageRecords, pageReports, pageSettings].forEach((p) => {
+          p.classList.add("hidden");
+        });
+        page.classList.remove("hidden");
+
+        // Update nav styles
+        [navCalculate, navRecords, navReports, navSettings].forEach((btn) => {
+          btn.classList.remove("border-b-4", "border-black", "font-normal");
+          btn.classList.add("opacity-50");
+        });
+        if (page === pageCalculate) {
+          navCalculate.classList.add("border-b-4", "border-black", "font-normal");
+          navCalculate.classList.remove("opacity-50");
+        } else if (page === pageRecords) {
+          navRecords.classList.add("border-b-4", "border-black", "font-normal");
+          navRecords.classList.remove("opacity-50");
+        } else if (page === pageReports) {
+          navReports.classList.add("border-b-4", "border-black", "font-normal");
+          navReports.classList.remove("opacity-50");
+        } else if (page === pageSettings) {
+          navSettings.classList.add("border-b-4", "border-black", "font-normal");
+          navSettings.classList.remove("opacity-50");
+        }
+      }
+
+      // AM/PM toggle helper
+      function toggleAMPM(startOrEnd, selected) {
+        if (startOrEnd === "start") {
+          if (selected === "AM") {
+            startAM.classList.add("selected");
+            startAM.setAttribute("aria-pressed", "true");
+            startPM.classList.remove("selected");
+            startPM.setAttribute("aria-pressed", "false");
+          } else {
+            startPM.classList.add("selected");
+            startPM.setAttribute("aria-pressed", "true");
+            startAM.classList.remove("selected");
+            startAM.setAttribute("aria-pressed", "false");
+          }
+        } else {
+          if (selected === "AM") {
+            endAM.classList.add("selected");
+            endAM.setAttribute("aria-pressed", "true");
+            endPM.classList.remove("selected");
+            endPM.setAttribute("aria-pressed", "false");
+          } else {
+            endPM.classList.add("selected");
+            endPM.setAttribute("aria-pressed", "true");
+            endAM.classList.remove("selected");
+            endAM.setAttribute("aria-pressed", "false");
+          }
+        }
+      }
+
+      // Calculate total minutes worked
+      function calculateMinutes() {
+        // Validate inputs
+        let sh = parseInt(startHH.value, 10);
+        let sm = parseInt(startMM.value, 10);
+        let eh = parseInt(endHH.value, 10);
+        let em = parseInt(endMM.value, 10);
+        if (
+          isNaN(sh) || sh < 1 || sh > 12 ||
+          isNaN(sm) || sm < 0 || sm > 59 ||
+          isNaN(eh) || eh < 1 || eh > 12 ||
+          isNaN(em) || em < 0 || em > 59
+        ) {
+          return null;
+        }
+
+        // Convert to 24h
+        if (startPM.getAttribute("aria-pressed") === "true" && sh !== 12) sh += 12;
+        if (startAM.getAttribute("aria-pressed") === "true" && sh === 12) sh = 0;
+        if (endPM.getAttribute("aria-pressed") === "true" && eh !== 12) eh += 12;
+        if (endAM.getAttribute("aria-pressed") === "true" && eh === 12) eh = 0;
+
+        // Create date objects
+        const dateStr = inputDate.value;
+        if (!dateStr) return null;
+        const startDate = new Date(dateStr);
+        startDate.setHours(sh, sm, 0, 0);
+        let endDate = new Date(dateStr);
+        endDate.setHours(eh, em, 0, 0);
+
+        // If next day checked and end <= start, add 1 day to end
+        if (nextDayCheckbox.checked && endDate <= startDate) {
+          endDate.setDate(endDate.getDate() + 1);
+        }
+
+        // If end < start and next day not checked, invalid
+        if (endDate <= startDate) return null;
+
+        // Calculate difference in minutes
+        let diffMinutes = Math.floor((endDate - startDate) / 60000);
+
+        // Subtract break time
+        let breakMinutes = parseInt(breakTimeInput.value, 10);
+        if (isNaN(breakMinutes) || breakMinutes < 0) breakMinutes = 0;
+        diffMinutes -= breakMinutes;
+        if (diffMinutes < 0) diffMinutes = 0;
+
+        return diffMinutes;
+      }
+
+      // Format minutes to HH:MM
+      function formatMinutes(mins) {
+        if (mins === null) return "00:00";
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+      }
+
+      // Calculate and update display
+      function updateDisplay() {
+        const mins = calculateMinutes();
+        if (mins === null) {
+          displayTime.textContent = "00:00";
+          displayMinutes.textContent = "0";
+          displayAmount.textContent = "0.00";
+          return;
+        }
+        displayTime.textContent = formatMinutes(mins);
+        displayMinutes.textContent = mins.toString();
+        const rate = parseFloat(hourlyRateInput.value);
+        const amount = rate && mins ? ((mins / 60) * rate).toFixed(2) : "0.00";
+        displayAmount.textContent = amount;
+      }
+
+      // Save record
+      function saveRecord() {
+        const mins = calculateMinutes();
+        if (mins === null) {
+          alert("Please enter valid start and end times.");
+          return false;
+        }
+        const record = {
+          id: Date.now(),
+          date: inputDate.value,
+          nextDay: nextDayCheckbox.checked,
+          project: inputProject.value,
+          start: {
+            hh: startHH.value.padStart(2, "0"),
+            mm: startMM.value.padStart(2, "0"),
+            ampm: startAM.getAttribute("aria-pressed") === "true" ? "AM" : "PM",
+          },
+          end: {
+            hh: endHH.value.padStart(2, "0"),
+            mm: endMM.value.padStart(2, "0"),
+            ampm: endAM.getAttribute("aria-pressed") === "true" ? "AM" : "PM",
+          },
+          breakTime: parseInt(breakTimeInput.value, 10) || 0,
+          hourlyRate: parseFloat(hourlyRateInput.value) || 0,
+          minutesWorked: mins,
+          amount: ((mins / 60) * (parseFloat(hourlyRateInput.value) || 0)).toFixed(2),
+          notes,
+        };
+        records.push(record);
+        localStorage.setItem("workRecords", JSON.stringify(records));
+        alert("Work hours saved.");
+        resetInputs();
+        return true;
+      }
+
+      // Reset inputs
+      function resetInputs() {
+        inputDate.value = new Date().toISOString().slice(0, 10);
+        nextDayCheckbox.checked = false;
+        if (settings.projects.length > 0) inputProject.value = settings.projects[0];
+        startHH.value = "";
+        startMM.value = "";
+        endHH.value = "";
+        endMM.value = "";
+        toggleAMPM("start", "AM");
+        toggleAMPM("end", "AM");
+        breakTimeInput.value = settings.breakTime || 30;
+        updateHourlyRate();
+        notes = "";
+        notesInput.value = "";
+        updateDisplay();
+      }
+
+      // Show notes modal
+      function openNotesModal() {
+        notesInput.value = notes;
+        notesModal.classList.remove("hidden");
+        notesInput.focus();
+      }
+
+      // Close notes modal
+      function closeNotesModal() {
+        notesModal.classList.add("hidden");
+      }
+
+      // Save notes from modal
+      function saveNotes() {
+        notes = notesInput.value.trim();
+        closeNotesModal();
+      }
+
+      // Render records list with delete buttons
+      function renderRecords(filter = "month") {
+        recordsList.innerHTML = "";
+        if (records.length === 0) {
+          recordsList.innerHTML = '<p class="text-center text-gray-600">No records found.</p>';
+          return;
+        }
+
+        // Group records by month or week
+        const grouped = {};
+        records.forEach((rec) => {
+          const d = new Date(rec.date);
+          let key;
+          if (filter === "month") {
+            key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+          } else {
+            // Week number calculation (ISO week)
+            const tempDate = new Date(d.getTime());
+            tempDate.setHours(0, 0, 0, 0);
+            tempDate.setDate(tempDate.getDate() + 3 - ((tempDate.getDay() + 6) % 7));
+            const week1 = new Date(tempDate.getFullYear(), 0, 4);
+            const weekNo = 1 + Math.round(((tempDate.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+            key = `${tempDate.getFullYear()}-W${weekNo.toString().padStart(2, "0")}`;
+          }
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(rec);
+        });
+
+        // Sort keys descending
+        const keys = Object.keys(grouped).sort((a, b) => (a < b ? 1 : -1));
+
+        keys.forEach((key) => {
+          const groupDiv = document.createElement("div");
+          groupDiv.className = "mb-4 border border-gray-300 rounded-md p-3 bg-white shadow text-[10px]";
+
+          const header = document.createElement("h3");
+          header.className = "font-bold mb-2";
+          header.textContent = filter === "month" ? `Month: ${key}` : `Week: ${key}`;
+          groupDiv.appendChild(header);
+
+          grouped[key].forEach((rec) => {
+            const recDiv = document.createElement("div");
+            recDiv.className = "border-t border-gray-200 pt-2 mt-2 flex flex-col gap-1";
+
+            const dateStr = new Date(rec.date).toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            });
+
+            recDiv.innerHTML = `
+              <p><strong>Date:</strong> ${dateStr} ${rec.nextDay ? "(Next day)" : ""}</p>
+              <p><strong>Project:</strong> ${rec.project}</p>
+              <p><strong>Start:</strong> ${rec.start.hh}:${rec.start.mm} ${rec.start.ampm}</p>
+              <p><strong>End:</strong> ${rec.end.hh}:${rec.end.mm} ${rec.end.ampm}</p>
+              <p><strong>Break:</strong> ${rec.breakTime} min</p>
+              <p><strong>Minutes Worked:</strong> ${rec.minutesWorked}</p>
+              <p><strong>Amount:</strong> $${rec.amount}</p>
+              <p><strong>Notes:</strong> ${rec.notes ? rec.notes.replace(/\n/g, "<br>") : "None"}</p>
+            `;
+
+            const delBtn = document.createElement("button");
+            delBtn.textContent = "Delete";
+            delBtn.className = "self-start bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition text-xs mt-1";
+            delBtn.setAttribute("aria-label", "Delete this record");
+            delBtn.addEventListener("click", () => {
+              if (confirm("Are you sure you want to delete this record?")) {
+                records = records.filter(r => r.id !== rec.id);
+                localStorage.setItem("workRecords", JSON.stringify(records));
+                renderRecords(filter);
+              }
+            });
+
+            recDiv.appendChild(delBtn);
+            groupDiv.appendChild(recDiv);
+          });
+
+          recordsList.appendChild(groupDiv);
+        });
+      }
+
+      // Download PDF report
+      async function downloadPDFReport() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        const start = reportStartDate.value;
+        const end = reportEndDate.value;
+        if (!start || !end) {
+          alert("Please select both start and end dates.");
+          return;
+        }
+        if (start > end) {
+          alert("Start date must be before or equal to end date.");
+          return;
+        }
+
+        // Filter records by date range
+        const filtered = records.filter((rec) => rec.date >= start && rec.date <= end);
+        if (filtered.length === 0) {
+          alert("No records found in the selected date range.");
+          return;
+        }
+
+        // Title
+        doc.setFontSize(14);
+        doc.text("Work Hours Report", 14, 20);
+        doc.setFontSize(10);
+        doc.text(`From: ${start}`, 14, 30);
+        doc.text(`To: ${end}`, 14, 36);
+
+        let y = 45;
+        doc.setFontSize(8);
+
+        filtered.forEach((rec) => {
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+          }
+          const dateStr = new Date(rec.date).toLocaleDateString();
+          doc.text(`Date: ${dateStr} ${rec.nextDay ? "(Next day)" : ""}`, 14, y);
+          y += 5;
+          doc.text(`Project: ${rec.project}`, 14, y);
+          y += 5;
+          doc.text(`Start: ${rec.start.hh}:${rec.start.mm} ${rec.start.ampm}`, 14, y);
+          y += 5;
+          doc.text(`End: ${rec.end.hh}:${rec.end.mm} ${rec.end.ampm}`, 14, y);
+          y += 5;
+          doc.text(`Break: ${rec.breakTime} min`, 14, y);
+          y += 5;
+          doc.text(`Minutes Worked: ${rec.minutesWorked}`, 14, y);
+          y += 5;
+          doc.text(`Amount: $${rec.amount}`, 14, y);
+          y += 5;
+          doc.text(`Notes: ${rec.notes || "None"}`, 14, y);
+          y += 8;
+        });
+
+        doc.save(`work_hours_report_${start}_to_${end}.pdf`);
+      }
+
+      // Save settings
+      function saveSettings(e) {
+        e.preventDefault();
+        const projectsRaw = inputProjects.value.trim();
+        const ratesRaw = inputHourlyRates.value.trim();
+
+        if (!projectsRaw) {
+          alert("Please enter at least one project.");
+          return;
+        }
+
+        const projectsArr = projectsRaw.split(",").map(p => p.trim()).filter(p => p.length > 0);
+        const ratesArr = ratesRaw.split(",").map(r => parseFloat(r.trim()));
+
+        if (ratesArr.length !== projectsArr.length) {
+          alert("Number of hourly rates must match number of projects.");
+          return;
+        }
+
+        if (ratesArr.some(r => isNaN(r) || r < 0)) {
+          alert("Please enter valid positive numbers for hourly rates.");
+          return;
+        }
+
+        settings.projects = projectsArr;
+        settings.hourlyRates = ratesArr;
+        localStorage.setItem("workSettings", JSON.stringify(settings));
+        populateProjects();
+        updateHourlyRate();
+        alert("Settings saved.");
+      }
+
+      // Event listeners
+
+      // Navigation
+      navCalculate.addEventListener("click", () => showPage(pageCalculate));
+      navRecords.addEventListener("click", () => {
+        showPage(pageRecords);
+        renderRecords(filterMonth.getAttribute("aria-pressed") === "true" ? "month" : "week");
+      });
+      navReports.addEventListener("click", () => showPage(pageReports));
+      navSettings.addEventListener("click", () => {
+        showPage(pageSettings);
+        // Populate settings textareas
+        inputProjects.value = settings.projects.join(", ");
+        inputHourlyRates.value = settings.hourlyRates.join(", ");
+      });
+
+      btnBackFromRecords.addEventListener("click", () => showPage(pageCalculate));
+      btnBackFromReports.addEventListener("click", () => showPage(pageCalculate));
+      btnBackFromSettings.addEventListener("click", () => showPage(pageCalculate));
+
+      // AM/PM toggles
+      startAM.addEventListener("click", () => toggleAMPM("start", "AM"));
+      startPM.addEventListener("click", () => toggleAMPM("start", "PM"));
+      endAM.addEventListener("click", () => toggleAMPM("end", "AM"));
+      endPM.addEventListener("click", () => toggleAMPM("end", "PM"));
+
+      // Inputs update display
+      [
+        startHH,
+        startMM,
+        endHH,
+        endMM,
+        breakTimeInput,
+        hourlyRateInput,
+        inputDate,
+        nextDayCheckbox,
+        inputProject,
+      ].forEach((el) => {
+        el.addEventListener("input", updateDisplay);
+        el.addEventListener("change", updateDisplay);
+      });
+
+      // Calculate button (Chart)
+      btnCalculate.addEventListener("click", () => {
+        if (saveRecord()) {
+          showPage(pageRecords);
+          renderRecords(filterMonth.getAttribute("aria-pressed") === "true" ? "month" : "week");
+        }
+      });
+
+      // Reset button
+      btnReset.addEventListener("click", resetInputs);
+
+      // Notes modal
+      btnNotes.addEventListener("click", openNotesModal);
+      btnCloseNotes.addEventListener("click", closeNotesModal);
+      btnSaveNotes.addEventListener("click", saveNotes);
+
+      // Filter buttons in records
+      filterMonth.addEventListener("click", () => {
+        filterMonth.classList.add("bg-[#e9be0a]");
+        filterMonth.classList.remove("bg-[#f7f4fb]");
+        filterMonth.setAttribute("aria-pressed", "true");
+        filterWeek.classList.remove("bg-[#e9be0a]");
+        filterWeek.classList.add("bg-[#f7f4fb]");
+        filterWeek.setAttribute("aria-pressed", "false");
+        renderRecords("month");
+      });
+      filterWeek.addEventListener("click", () => {
+        filterWeek.classList.add("bg-[#e9be0a]");
+        filterWeek.classList.remove("bg-[#f7f4fb]");
+        filterWeek.setAttribute("aria-pressed", "true");
+        filterMonth.classList.remove("bg-[#e9be0a]");
+        filterMonth.classList.add("bg-[#f7f4fb]");
+        filterMonth.setAttribute("aria-pressed", "false");
+        renderRecords("week");
+      });
+
+      // Download report
+      btnDownloadReport.addEventListener("click", downloadPDFReport);
+
+      // Settings form
+      settingsForm.addEventListener("submit", saveSettings);
+
+      // Initialize
+      toggleAMPM("start", "AM");
+      toggleAMPM("end", "AM");
+      updateDisplay();
+    })();
+  </script>
+</body>
+</html>
